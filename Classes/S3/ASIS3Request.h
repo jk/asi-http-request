@@ -5,7 +5,8 @@
 //  Created by Ben Copsey on 30/06/2009.
 //  Copyright 2009 All-Seeing Interactive. All rights reserved.
 //
-// A (basic) class for accessing data stored on Amazon's Simple Storage Service (http://aws.amazon.com/s3/) using the REST API
+// A class for accessing data stored on Amazon's Simple Storage Service (http://aws.amazon.com/s3/) using the REST API
+// While you can use this class directly, the included subclasses make typical operations easier
 
 #import <Foundation/Foundation.h>
 #import "ASIHTTPRequest.h"
@@ -34,73 +35,51 @@ typedef enum _ASIS3ErrorType {
 	// Your S3 secret access key. Set it on the request, or set it globally using [ASIS3Request setSharedSecretAccessKey:]
 	NSString *secretAccessKey;
 	
-	// Name of the bucket to talk to
-	NSString *bucket;
-	
-	// Path to the resource you want to access on S3. Leave empty for the bucket root
-	NSString *path;
-	
 	// The string that will be used in the HTTP date header. Generally you'll want to ignore this and let the class add the current date for you, but the accessor is used by the tests
 	NSString *dateString;
-	
-	// The mime type of the content for PUT requests
-	// Set this if having the correct mime type returned to you when you GET the data is important (eg it will be served by a web-server)
-	// Will be set to 'application/octet-stream' otherwise in iPhone apps, or autodetected on Mac OS X
-	NSString *mimeType;
-	
-	// The access policy to use when PUTting a file (see the string constants at the top of this header)
+
+	// The access policy to use when PUTting a file (see the string constants at the top ASIS3Request.h for details on what the possible options are)
 	NSString *accessPolicy;
-	
-	// The bucket + path of the object to be copied (used with COPYRequestFromBucket:path:toBucket:path:)
-	NSString *sourceBucket;
-	NSString *sourcePath;
-	
+
 	// Internally used while parsing errors
 	NSString *currentErrorString;
-	
 }
-
-#pragma mark Constructors
-
-// Create a request, building an appropriate url
-+ (id)requestWithBucket:(NSString *)bucket path:(NSString *)path;
-
-// Create a PUT request using the file at filePath as the body
-+ (id)PUTRequestForFile:(NSString *)filePath withBucket:(NSString *)bucket path:(NSString *)path;
-
-// Create a PUT request using the supplied NSData as the body (set the mime-type manually with setMimeType: if necessary)
-+ (id)PUTRequestForData:(NSData *)data withBucket:(NSString *)bucket path:(NSString *)path;
-	
-// Create a DELETE request for the object at path
-+ (id)DELETERequestWithBucket:(NSString *)bucket path:(NSString *)path;
-
-// Create a PUT request to copy an object from one location to another
-// Clang will complain because it thinks this method should return an object with +1 retain :(
-+ (id)COPYRequestFromBucket:(NSString *)sourceBucket path:(NSString *)sourcePath toBucket:(NSString *)bucket path:(NSString *)path;
-
-// Creates a HEAD request for the object at path
-+ (id)HEADRequestWithBucket:(NSString *)bucket path:(NSString *)path;
-
 
 // Uses the supplied date to create a Date header string
 - (void)setDate:(NSDate *)date;
 
-#pragma mark Shared access keys
+// Will return a dictionary of the 'amz-' headers that wil be sent to S3
+// Override in subclasses to add new ones	
+- (NSMutableDictionary *)S3Headers;
+	
+// Returns the string that will used to create a signature for this request
+// Is overridden in ASIS3ObjectRequest
+- (NSString *)stringToSignForHeaders:(NSString *)canonicalizedAmzHeaders resource:(NSString *)canonicalizedResource;
+
+// Parses the response to work out if S3 returned an error	
+- (void)parseResponseXML;
+
+#pragma mark shared access keys
 
 // Get and set the global access key, this will be used for all requests the access key hasn't been set for
 + (NSString *)sharedAccessKey;
 + (void)setSharedAccessKey:(NSString *)newAccessKey;
 + (NSString *)sharedSecretAccessKey;
 + (void)setSharedSecretAccessKey:(NSString *)newAccessKey;
+	
+# pragma mark helpers
+	
+// Returns a date formatter than can be used to parse a date from S3
++ (NSDateFormatter *)dateFormatter;
+
+// URL-encodes an S3 key so it can be used in a url
+// You shouldn't normally need to use this yourself
++ (NSString *)stringByURLEncodingForS3Path:(NSString *)key;
 
 
-@property (retain) NSString *bucket;
-@property (retain) NSString *path;
+	
 @property (retain) NSString *dateString;
-@property (retain) NSString *mimeType;
 @property (retain) NSString *accessKey;
 @property (retain) NSString *secretAccessKey;
 @property (retain) NSString *accessPolicy;
-@property (retain) NSString *sourceBucket;
-@property (retain) NSString *sourcePath;
 @end
