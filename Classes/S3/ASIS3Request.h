@@ -42,7 +42,8 @@ typedef enum _ASIS3ErrorType {
 	NSString *accessPolicy;
 
 	// Internally used while parsing errors
-	NSString *currentErrorString;
+	NSString *currentXMLElementContent;
+	NSMutableArray *currentXMLElementStack;
 }
 
 // Uses the supplied date to create a Date header string
@@ -77,9 +78,10 @@ typedef enum _ASIS3ErrorType {
 + (NSString *)stringByURLEncodingForS3Path:(NSString *)key;
 
 
-	
 @property (retain) NSString *dateString;
 @property (retain) NSString *accessKey;
 @property (retain) NSString *secretAccessKey;
 @property (retain) NSString *accessPolicy;
+@property (retain) NSString *currentXMLElementContent;
+@property (retain) NSMutableArray *currentXMLElementStack;
 @end

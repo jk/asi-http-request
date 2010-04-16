@@ -31,7 +31,8 @@
 + (id)requestWithBucket:(NSString *)bucket key:(NSString *)key subResource:(NSString *)subResource
 {
 	NSString *path = [ASIS3Request stringByURLEncodingForS3Path:key];
-	ASIS3ObjectRequest *request = [[[self alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://%@.s3.amazonaws.com%@?",bucket,path,subResource]]] autorelease];
+	ASIS3ObjectRequest *request = [[[self alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://%@.s3.amazonaws.com%@?%@",bucket,path,subResource]]] autorelease];
+	[request setSubResource:subResource];
 	[request setBucket:bucket];
 	[request setKey:key];
 	return request;
@@ -98,6 +99,7 @@
 	[mimeType release];
 	[sourceKey release];
 	[sourceBucket release];
+	[subResource release];
 	[super dealloc];
 }
 
@@ -112,18 +114,11 @@
 	}
 }
 
-- (void)requestFinished
-{
-	// COPY requests return a 200 whether they succeed or fail, so we need to look at the XML to see if we were successful.
-	if ([self responseStatusCode] == 200 && [self sourceKey] && [self sourceBucket]) {
-		[self parseResponseXML];
-		return;
-	}
-	[super requestFinished];
-}
-
 - (NSString *)canonicalizedResource
 {
+	if ([[self subResource] length] > 0) {
+		return [NSString stringWithFormat:@"/%@%@?%@",[self bucket],[ASIS3Request stringByURLEncodingForS3Path:[self key]], [self subResource]];
+	}
 	return [NSString stringWithFormat:@"/%@%@",[self bucket],[ASIS3Request stringByURLEncodingForS3Path:[self key]]];
 }
 
@@ -152,4 +147,6 @@
 @synthesize sourceBucket;
 @synthesize sourceKey;
 @synthesize mimeType;
+@synthesize subResource;
+
 @end

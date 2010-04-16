@@ -122,6 +122,7 @@
 	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2]];
 	
 	GHAssertTrue(started,@"Failed to call the delegate method when the request started");	
+	GHAssertTrue(receivedResponseHeaders,@"Failed to call the delegate method when the request started");	
 	GHAssertTrue(finished,@"Failed to call the delegate method when the request finished");
 	
 	request = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:@"http://allseeing-i.com/ASIHTTPRequest/tests/the_great_american_novel_%28abridged%29.txt"]];
@@ -134,11 +135,13 @@
 	started = NO;
 	finished = NO;
 	failed = NO;
+	receivedResponseHeaders = NO;
 	
 	// Test custom delegate methods
 	request = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:@"http://allseeing-i.com"]];
 	[request setDelegate:self];
 	[request setDidStartSelector:@selector(delegateTestStarted:)];
+	[request setDidReceiveResponseHeadersSelector:@selector(delegateTestResponseHeaders:)];
 	[request setDidFinishSelector:@selector(delegateTestFinished:)];
 	[request startSynchronous];
 	
@@ -161,6 +164,13 @@
 	started = YES;
 }
 
+- (void)requestReceivedResponseHeaders:(ASIHTTPRequest *)request
+{
+	GHAssertNotNil([request responseHeaders],@"Called requestReceivedResponseHeaders: when we have no headers");
+	receivedResponseHeaders = YES;
+}
+
+
 - (void)requestFinished:(ASIHTTPRequest *)request
 {
 	finished = YES;
@@ -174,6 +184,12 @@
 - (void)delegateTestStarted:(ASIHTTPRequest *)request
 {
 	started = YES;
+}
+
+- (void)delegateTestResponseHeaders:(ASIHTTPRequest *)request
+{
+	GHAssertNotNil([request responseHeaders],@"Called delegateTestResponseHeaders: when we have no headers");
+	receivedResponseHeaders = YES;
 }
 
 - (void)delegateTestFinished:(ASIHTTPRequest *)request
@@ -483,9 +499,8 @@
 	unsigned long long partialFileSize = [fileSize unsignedLongLongValue];
 	BOOL success = (partialFileSize < 1036935);
 	GHAssertTrue(success,@"Downloaded whole file too quickly, cannot proceed with this test");
-	
-	
-	
+
+
 	// Resume the download synchronously
 	request = [ASIHTTPRequest requestWithURL:url];
 	[request setTemporaryFileDownloadPath:temporaryPath];
@@ -1143,7 +1158,7 @@
 	GHAssertNotNil([request error],@"Failed to generate an error for a self-signed certificate (Will fail on the second run in the same session!)");		
 	
 	// Just for testing the request generated a custom error description - don't do this! You should look at the domain / code of the underlyingError in your own programs.
-	BOOL success = ([[[request error] localizedDescription] isEqualToString:@"A connection failure occurred: SSL problem (possibily a bad/expired/self-signed certificate)"]);
+	BOOL success = ([[[request error] localizedDescription] isEqualToString:@"A connection failure occurred: SSL problem (possibly a bad/expired/self-signed certificate)"]);
 	GHAssertTrue(success,@"Generated the wrong error for a self signed cert");
 	
 	// Turn off certificate validation, and try again
@@ -1540,4 +1555,29 @@
 	GHAssertTrue(success,@"Failed to return the default mime type when a file has no extension");
 }
 
+- (void)testDelegateResponseDataHandling
+{
+	[self setResponseData:[NSMutableData dataWithLength:0]];
+	ASIHTTPRequest *request = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:@"http://allseeing-i.com/ASIHTTPRequest/tests/the_great_american_novel_%28young_readers_edition%29.txt"]];
+	[request setDelegate:self];
+	[request setDidReceiveDataSelector:@selector(testRequest:didReceiveData:)];
+	[request setDidFinishSelector:@selector(testRequestFinished:)];
+	[request startAsynchronous];
+}
+
+- (void)testRequestFinished:(ASIHTTPRequest *)request
+{
+	ASIHTTPRequest *request2 = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:@"http://allseeing-i.com/ASIHTTPRequest/tests/the_great_american_novel_%28young_readers_edition%29.txt"]];
+	[request2 startSynchronous];
+	NSString *firstResponse = [[[NSString alloc] initWithBytes:[[self responseData] bytes] length:[[self responseData] length] encoding:[request responseEncoding]] autorelease];
+	BOOL success = [[request2 responseString] isEqualToString:firstResponse];
+	GHAssertTrue(success,@"Failed to correctly download and store the response using a delegate");
+}
+
+- (void)testRequest:(ASIHTTPRequest *)request didReceiveData:(NSData *)data
+{
+	[[self responseData] appendData:data];
+}
+
+@synthesize responseData;
 @end
