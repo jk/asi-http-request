@@ -30,14 +30,14 @@
 
 + (id)requestWithBucket:(NSString *)bucket
 {
-	ASIS3ObjectRequest *request = [[[self alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://%@.s3.amazonaws.com",bucket]]] autorelease];
+	ASIS3BucketRequest *request = [[[self alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://%@.s3.amazonaws.com",bucket]]] autorelease];
 	[request setBucket:bucket];
 	return request;
 }
 
 + (id)requestWithBucket:(NSString *)bucket subResource:(NSString *)subResource
 {
-	ASIS3ObjectRequest *request = [[[self alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://%@.s3.amazonaws.com/?%@",bucket,subResource]]] autorelease];
+	ASIS3BucketRequest *request = [[[self alloc] initWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://%@.s3.amazonaws.com/?%@",bucket,subResource]]] autorelease];
 	[request setBucket:bucket];
 	[request setSubResource:subResource];
 	return request;
@@ -87,7 +87,7 @@
 		[queryParts addObject:[NSString stringWithFormat:@"prefix=%@",[[self prefix] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]];
 	}
 	if ([self marker]) {
-		[queryParts addObject:[NSString stringWithFormat:@"key-marker=%@",[[self marker] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]];
+		[queryParts addObject:[NSString stringWithFormat:@"marker=%@",[[self marker] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]];
 	}
 	if ([self delimiter]) {
 		[queryParts addObject:[NSString stringWithFormat:@"delimiter=%@",[[self delimiter] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]];
@@ -127,7 +127,7 @@
 	} else if ([elementName isEqualToString:@"Key"]) {
 		[[self currentObject] setKey:[self currentXMLElementContent]];
 	} else if ([elementName isEqualToString:@"LastModified"]) {
-		[[self currentObject] setLastModified:[[ASIS3Request dateFormatter] dateFromString:[self currentXMLElementContent]]];
+		[[self currentObject] setLastModified:[[ASIS3Request S3ResponseDateFormatter] dateFromString:[self currentXMLElementContent]]];
 	} else if ([elementName isEqualToString:@"ETag"]) {
 		[[self currentObject] setETag:[self currentXMLElementContent]];
 	} else if ([elementName isEqualToString:@"Size"]) {

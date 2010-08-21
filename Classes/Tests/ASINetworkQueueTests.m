@@ -55,6 +55,11 @@ IMPORTANT
 
 - (void)testDelegateMethods
 {
+	[self performSelectorOnMainThread:@selector(runDelegateMethodsTest) withObject:nil waitUntilDone:YES];
+}
+
+- (void)runDelegateMethodsTest
+{
 	started = NO;
 	finished = NO;
 	failed = NO;
@@ -63,6 +68,7 @@ IMPORTANT
 	[networkQueue setDelegate:self];
 	[networkQueue setRequestDidStartSelector:@selector(delegateTestStarted:)];
 	[networkQueue setRequestDidFinishSelector:@selector(delegateTestFinished:)];
+	[networkQueue setRequestDidReceiveResponseHeadersSelector:@selector(delegateTestResponseHeaders:)];
 	
 	ASIHTTPRequest *request = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:@"http://allseeing-i.com"]];
 	[networkQueue addOperation:request];
@@ -70,7 +76,10 @@ IMPORTANT
 	
 	[networkQueue waitUntilAllOperationsAreFinished];
 	
-	GHAssertTrue(started,@"Failed to call the delegate method when the request started");	
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2]];
+
+	GHAssertTrue(started,@"Failed to call the delegate method when the request started");
+	GHAssertTrue(receivedResponseHeaders,@"Failed to call the delegate method when the request received response headers");
 	GHAssertTrue(finished,@"Failed to call the delegate method when the request finished");
 	
 	networkQueue = [ASINetworkQueue queue];
@@ -83,6 +92,8 @@ IMPORTANT
 	[networkQueue go];
 	
 	[networkQueue waitUntilAllOperationsAreFinished];
+
+	[[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:2]];
 	
 	GHAssertTrue(failed,@"Failed to call the delegate method when the request failed");
 	
@@ -91,6 +102,12 @@ IMPORTANT
 - (void)delegateTestStarted:(ASIHTTPRequest *)request
 {
 	started = YES;
+}
+
+- (void)delegateTestResponseHeaders:(ASIHTTPRequest *)request
+{
+	GHAssertNotNil([request responseHeaders],@"Called delegateTestResponseHeaders: when we have no headers");
+	receivedResponseHeaders = YES;
 }
 
 - (void)delegateTestFinished:(ASIHTTPRequest *)request
@@ -424,8 +441,6 @@ IMPORTANT
 	success = ([request5 responseStatusCode] == 404);
 	GHAssertTrue(success,@"Failed to obtain the correct status code for request 5");
 
-
-	
 	[requestThatShouldFail release];
 	
 }
@@ -604,10 +619,6 @@ IMPORTANT
 	}
 }
 
-
-
-
-
 - (void)requestFailedExpectedly:(ASIHTTPRequest *)request
 {
     request_didfail = YES;
@@ -665,7 +676,8 @@ IMPORTANT
 	}
 	
 	NSURL *downloadURL = [NSURL URLWithString:@"http://allseeing-i.com/ASIHTTPRequest/tests/the_great_american_novel_%28young_readers_edition%29.txt"];
-	ASINetworkQueue *networkQueue = [ASINetworkQueue queue];	
+	ASINetworkQueue *networkQueue = [ASINetworkQueue queue];
+	[networkQueue setShouldCancelAllRequestsOnFailure:NO];
 
 	ASIHTTPRequest *request = [[[ASIHTTPRequest alloc] initWithURL:downloadURL] autorelease];
 	[request setDownloadDestinationPath:downloadPath];
@@ -1072,8 +1084,13 @@ IMPORTANT
 	GHAssertTrue(success,@"Failed to send credentials correctly? (Expected: '%@', got '%@')",expectedResponse,[[request responseString] lowercaseString]);
 }
 
-// Test for a bug where failing head requests would not notify the original request's delegate of the failure
 - (void)testHEADFailure
+{
+	[self performSelectorOnMainThread:@selector(runHEADFailureTest) withObject:nil waitUntilDone:YES];
+}
+
+// Test for a bug where failing head requests would not notify the original request's delegate of the failure
+- (void)runHEADFailureTest
 {
 	headFailed = NO;
 	ASINetworkQueue *queue = [ASINetworkQueue queue];
