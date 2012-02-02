@@ -126,7 +126,7 @@ enum {
 	// Apple NetworkStatus Constant Names.
 	NotReachable     = kNotReachable,
 	ReachableViaWiFi = kReachableViaWiFi,
-	ReachableViaWWAN = kReachableViaWWAN
+	pchReachableViaWWAN = kReachableViaWWAN
 	
 };
 
